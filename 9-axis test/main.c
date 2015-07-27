@@ -9,7 +9,7 @@
 #include <util/delay.h>
 #include "i2cmaster.h"
 
-#define NineAxis 0xa4
+#define NineAxis 0b11010000  // bit 1 = pin9 = gnd
 
 int main(void) {
     unsigned char ret;
