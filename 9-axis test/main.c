@@ -119,14 +119,15 @@ void search_i2c() {
 }
 
 uint8_t init_nineAxisMagSlave0() {
+	// TODO:  get mag to work as slave0
 	write_nineAxis(55, 0x00); //clear i2c bypass enable bit
-	write_nineAxis(37,NineAxisMag >> 1);
-	write_nineAxis(38,0x03);
-	write_nineAxis(39,0b11010110);
+	write_nineAxis(37,NineAxisMag >> 1);  // load mag I2C address to slave0 address register
+	write_nineAxis(38,0x03);  // load mag starting data register to slave0 data register aaddress register
+	write_nineAxis(39,0b11010110);  // set up slave 0 contol register
 	write_nineAxis(106, 0x01); //reset i2c master
 
-	// 0x0a
-	write_nineAxis(99, 0x02); //enable the magnetometer
+	// this needs to be written to mag register 0x0a
+	write_nineAxis(99, 0x02); //load slave0 data output register with value to enable the magnetometer
    	return(1);
 }
 
@@ -209,6 +210,9 @@ int main(void) {
     /* configure NineAxis registers*/
     if (init_nineAxis() & init_nineAxisMag())
     {
+    	char b;
+    	while ((b = receiveByte()) != 'x')
+    		transmitByte(b);
         while (1) {
         	read_nineAxis(59,byteBuffer,14);
         	read_NineAxisMag(0x03,byteBuffer+14,6);
