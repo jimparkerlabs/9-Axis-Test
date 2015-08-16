@@ -11,7 +11,7 @@
 #include "USART.h"
 
 #define NineAxis 0b11010000  // bit 0 = AD0 = pin9 = gnd
-#define NineAxisMag 0x0C
+#define NineAxisMag 0x18  // (0x0C << 1)
 
 void write_nineAxis(uint8_t address, uint8_t byte) {
     unsigned char ret;
@@ -62,10 +62,11 @@ int read_nineAxis(uint8_t address, uint8_t* data, uint8_t numBytes) {
 int read_NineAxisMag(uint8_t address, uint8_t* data, uint8_t numBytes) {
 	int i = 0;
 	if (numBytes > 0) {
+    	write_nineAxisMag(0x0A, 0x02);          //enable the magnetometer in one-shot mode
 		i2c_start_wait(NineAxisMag+I2C_WRITE);   // set device address and write mode
 		/* issuing start condition ok, device accessible */
 		i2c_write(address);                     // write register address
-		i2c_rep_start(NineAxisMag+I2C_READ);       // set device address and read mode
+		i2c_rep_start(NineAxisMag+I2C_READ);    // set device address and read mode
 
 		for(i=0; i < (numBytes-1); i++)
 			data[i] = i2c_read(1);
@@ -92,27 +93,28 @@ uint8_t init_nineAxisMag() {
     } else {
     	printString("Found MagNine-Axis device on I2C port\r\n");
     	i2c_stop();
-    	write_nineAxisMag(0x0A, 0x02); //enable the magnetometer
     	return(1);
     }
 }
 
 void search_i2c() {
-	write_nineAxis(55, 0x02); //set i2c bypass enable bit to true
-	write_nineAxis(106, 0x01); //reset i2c master
+	//write_nineAxis(55, 0x02); //set i2c bypass enable bit to true
+	//write_nineAxis(106, 0x01); //reset i2c master
 
     unsigned char ret;
     for (uint8_t addy=0; addy < 128; addy++) {
-        ret = i2c_start((addy << 1)+I2C_WRITE);       // set device address and write mode
+    	printBinaryByte(addy<<1);
+    	printString(" (0x");
+    	printHexByte(addy<<1);
+    	printString(")");
+        ret = i2c_start((addy<<1)+I2C_WRITE);       // set device address and write mode
         if ( ret == 0 ) {
-        	printString("Device found on I2C port !!!:  0x");
-        	printHexByte(addy << 1);
-        	printString("\r\n");
+        	printString(": Device found on I2C port !!!");
         	i2c_stop();
         }
-    	return;
+    	printString("\r\n");
     }
-
+    printString("Finished searching I2C bus\r\n");
     return;
 }
 
@@ -199,13 +201,17 @@ int main(void) {
 	initUSART();
     i2c_init();           // init I2C interface
 
+	// clear screen
+	transmitByte(0x1b);
+	printString("[2J");
+
+    //search_i2c();
     /* configure NineAxis registers*/
-    init_nineAxis();
-    //init_nineAxisMag();
+    if (init_nineAxis() & init_nineAxisMag())
     {
         while (1) {
         	read_nineAxis(59,byteBuffer,14);
-        	//read_NineAxisMag(0x03,byteBuffer+14,6);
+        	read_NineAxisMag(0x03,byteBuffer+14,6);
 
         	//swapBuffer(byteBuffer, 14+6);
         	convertBuffer(byteBuffer, data, 7+3);
